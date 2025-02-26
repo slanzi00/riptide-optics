@@ -2,7 +2,7 @@
 
 #include <G4AnalysisManager.hh>
 
-void RunAction::BeginOfRunAction(const G4Run*)
+void RunAction::BeginOfRunAction(G4Run const*)
 {
   auto analysis_manager = G4AnalysisManager::Instance();
   analysis_manager->OpenFile("output.root");

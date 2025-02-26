@@ -20,12 +20,11 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event)
   auto particle_table = G4ParticleTable::GetParticleTable();
   auto particle       = particle_table->FindParticle("opticalphoton");
 
-  G4double radius  = 2.5 * mm;
-  G4int numPhotons = 1000;
+  auto radius = 2.5 * mm;
 
-  for (G4int i = 0; i < numPhotons; i++) {
-    G4double phi = 2 * M_PI * G4UniformRand();
-    G4double r   = radius * std::sqrt(G4UniformRand());
+  for (int i{}, num_photons{1000}; i != num_photons; ++i) {
+    auto phi = 2 * M_PI * G4UniformRand();
+    auto r   = radius * std::sqrt(G4UniformRand());
     G4ThreeVector position{r * std::cos(phi), r * std::sin(phi), 0.0};
     G4ThreeVector momentum_direction{0.0, 0.0, -1.0};
 
