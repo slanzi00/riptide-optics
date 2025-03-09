@@ -10,19 +10,15 @@
 
 int main(int argc, char** argv)
 {
-  G4UIExecutive* ui        = new G4UIExecutive(argc, argv);
-  G4RunManager* runManager = new G4RunManager();
-  runManager->SetUserInitialization(new DetectorConstruction());
-  runManager->SetUserInitialization(new PhysicsList());
-  runManager->SetUserInitialization(new ActionInitialization());
-  runManager->Initialize();
+  G4UIExecutive ui{argc, argv};
+  G4RunManager run_manager{};
+  run_manager.SetUserInitialization(new riptide::DetectorConstruction{});
+  run_manager.SetUserInitialization(new riptide::PhysicsList{});
+  run_manager.SetUserInitialization(new riptide::ActionInitialization{});
+  run_manager.Initialize();
 
-  G4VisManager* visManager = new G4VisExecutive();
-  visManager->Initialize();
+  G4VisExecutive vis_manager{};
+  vis_manager.Initialize();
   G4UImanager::GetUIpointer()->ApplyCommand("/control/execute vis.mac");
-  ui->SessionStart();
-
-  delete visManager;
-  delete ui;
-  delete runManager;
+  ui.SessionStart();
 }

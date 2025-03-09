@@ -3,10 +3,14 @@
 
 #include <G4VModularPhysicsList.hh>
 
+namespace riptide {
+
 class PhysicsList : public G4VModularPhysicsList
 {
  public:
   PhysicsList();
 };
+
+} // namespace riptide
 
 #endif

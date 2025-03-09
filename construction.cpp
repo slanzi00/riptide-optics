@@ -12,34 +12,53 @@
 #include <G4SubtractionSolid.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4ThreeVector.hh>
+#include <G4UnionSolid.hh>
 #include <G4VPhysicalVolume.hh>
 
-G4VPhysicalVolume* DetectorConstruction::Construct()
-{
-  auto nist            = G4NistManager::Instance();
-  auto pyrex_material  = nist->FindOrBuildMaterial("G4_Pyrex_Glass");
-  auto vacuum_material = nist->FindOrBuildMaterial("G4_Galactic");
+namespace riptide {
 
-  std::vector<double> photon_energy_range{1. * eV, 10. * eV};
-  std::vector<double> refractive_index_pyrex{1.47, 1.47};
+G4LogicalVolume* DetectorConstruction::create_world(double size = 1. * m)
+{
+  auto void_material = G4NistManager::Instance()->FindOrBuildMaterial("G4_AIR");
+
+  auto void_properties = new G4MaterialPropertiesTable();
+  void_properties->AddProperty("RINDEX", {1. * eV, 10. * eV}, {1.0, 1.0});
+  void_material->SetMaterialPropertiesTable(void_properties);
+
+  auto world_solid = new G4Box("world_sv", size / 2., size / 2., size / 2.);
+  return new G4LogicalVolume(world_solid, void_material, "world_lv");
+}
+
+G4LogicalVolume* DetectorConstruction::create_scintillator(double side = 6. * cm)
+{
+  auto pvt_material = G4NistManager::Instance()->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
+
+  auto pvt_properties = new G4MaterialPropertiesTable();
+  pvt_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {1.58, 1.58});
+  pvt_properties->AddProperty("ABSLENGTH", {1 * eV, 10 * eV}, {210 * cm, 210 * cm});
+  pvt_properties->AddProperty("SCINTILLATIONCOMPONENT1", {1 * eV, 10 * eV}, {1.34e-4, 1.34e-4});
+  pvt_properties->AddConstProperty("SCINTILLATIONYIELD", 10000. / MeV);
+  pvt_properties->AddConstProperty("RESOLUTIONSCALE", 1.0);
+  pvt_properties->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 1 * ns);
+  pvt_properties->AddConstProperty("SCINTILLATIONTIMECONSTANT2", 10 * ns);
+  pvt_properties->AddConstProperty("SCINTILLATIONYIELD1", 0.8);
+
+  pvt_material->SetMaterialPropertiesTable(pvt_properties);
+
+  auto solid = new G4Box("scintillator_sv", side / 2., side / 2., side / 2.);
+  return new G4LogicalVolume(solid, pvt_material, "scintillator_lv");
+}
+
+G4LogicalVolume* DetectorConstruction::create_lens_system_lv()
+{
+  auto pyrex_material = G4NistManager::Instance()->FindOrBuildMaterial("G4_Pyrex_Glass");
 
   auto pyrex_optical_properties = new G4MaterialPropertiesTable();
-  pyrex_optical_properties->AddProperty("RINDEX", photon_energy_range, refractive_index_pyrex);
+  pyrex_optical_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {1.47, 1.47});
   pyrex_material->SetMaterialPropertiesTable(pyrex_optical_properties);
 
-  std::vector<double> refractive_index_vacuum{1.0, 1.0};
-  auto vacuum_optical_properties = new G4MaterialPropertiesTable();
-  vacuum_optical_properties->AddProperty("RINDEX", photon_energy_range, refractive_index_vacuum);
-  vacuum_material->SetMaterialPropertiesTable(vacuum_optical_properties);
-
-  auto const world_size = 100. * cm;
-  auto world_solid    = new G4Box("world_solid", world_size / 2., world_size / 2., world_size / 2.);
-  auto world_logical  = new G4LogicalVolume(world_solid, vacuum_material, "world_logical");
-  auto world_physical = new G4PVPlacement(
-      0, G4ThreeVector(0, 0, 0), world_logical, "world_physical", 0, false, 0, true);
-
-  auto const lens_1_radius        = 28.2 * mm;
-  auto const lens_1_cutout_offset = 16 * mm;
+  const G4double lens_1_radius        = 28.2 * mm;
+  const G4double lens_1_cutout_offset = 16.3 * mm;
 
   auto lens_1_sphere_solid =
       new G4Sphere("lens_1_sphere_solid", 0., lens_1_radius, 0., 2 * M_PI, 0., M_PI);
@@ -54,14 +73,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       0,
       G4ThreeVector(0, 0, lens_1_cutout_offset));
 
-  auto lens_1_logical = new G4LogicalVolume(lens_1_solid, pyrex_material, "lens_1_logical");
-
-  new G4PVPlacement(
-      0, G4ThreeVector(0, 0, 0), lens_1_logical, "lens_1_physical", world_logical, false, 0, true);
-
-  auto const lens_2_radius           = 35.25 * mm;
-  auto const lens_2_cutout_offset    = 13 * mm;
-  auto const lens_2_placement_offset = -64 * mm;
+  const G4double lens_2_radius           = 35.25 * mm;
+  const G4double lens_2_cutout_offset    = 12.5 * mm;
+  const G4double lens_2_placement_offset = -64 * mm;
 
   auto lens_2_sphere_solid =
       new G4Sphere("lens_2_sphere_solid", 0., lens_2_radius, 0., 2 * M_PI, 0., M_PI);
@@ -76,43 +90,94 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       0,
       G4ThreeVector(0, 0, lens_2_cutout_offset));
 
-  auto lens_2_logical = new G4LogicalVolume(lens_2_solid, pyrex_material, "lens_2_logical");
-
   auto lens_2_rotation = new G4RotationMatrix();
   lens_2_rotation->rotateX(180 * deg);
 
-  new G4PVPlacement(
+  auto lenses_solid = new G4UnionSolid(
+      "lenses_solid",
+      lens_1_solid,
+      lens_2_solid,
       lens_2_rotation,
-      G4ThreeVector(0, 0, lens_2_placement_offset),
-      lens_2_logical,
-      "lens_2_physical",
-      world_logical,
-      false,
-      0,
-      true);
+      G4ThreeVector(0, 0, lens_2_placement_offset));
 
-  auto power_meter_solid =
-      new G4Box("power_meter_solid", 10. * mm / 2., 10. * mm / 2., 1. * mm / 2.);
+  auto lenses_logical = new G4LogicalVolume(lenses_solid, pyrex_material, "lenses_logical");
 
-  auto power_meter_logical =
-      new G4LogicalVolume(power_meter_solid, vacuum_material, "power_meter_logical");
+  return lenses_logical;
+}
+
+void DetectorConstruction::create_and_place_cmos(
+    G4LogicalVolume* world_lv, double lens_sensor_dist = 35. * mm)
+{
+  auto silicon_material   = G4NistManager::Instance()->FindOrBuildMaterial("G4_Si");
+  auto silicon_properties = new G4MaterialPropertiesTable();
+  silicon_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {3.42, 3.42});
+  silicon_material->SetMaterialPropertiesTable(silicon_properties);
+
+  const G4double sensor_width     = 19. * mm;
+  const G4double sensor_height    = 10. * mm;
+  const G4double sensor_thickness = 0.1 * mm;
+  const G4int num_pixels_x        = 38 * 2;
+  const G4int num_pixels_y        = 20 * 2;
+  const G4double pixel_size_x     = sensor_width / num_pixels_x;
+  const G4double pixel_size_y     = sensor_height / num_pixels_y;
+
+  auto cmos_sensor_sv =
+      new G4Box("cmos_sensor_sv", pixel_size_x / 2., pixel_size_y / 2., sensor_thickness / 2.);
+
+  m_cmos_sensor_lv = new G4LogicalVolume(cmos_sensor_sv, silicon_material, "cmos_sensor_lv");
+
+  for (int i = 0; i < num_pixels_x; i++) {
+    for (int j = 0; j < num_pixels_y; j++) {
+      new G4PVPlacement(
+          0,
+          G4ThreeVector(
+              (-sensor_width / 2. + (i + 0.5) * pixel_size_x),
+              (-sensor_height / 2. + (j + 0.5) * pixel_size_y),
+              (79.5 + lens_sensor_dist) * mm),
+          m_cmos_sensor_lv,
+          "cmos_sensor_pv",
+          world_lv,
+          false,
+          i * num_pixels_y + j,
+          false);
+    }
+  }
+}
+
+G4VPhysicalVolume* DetectorConstruction::Construct()
+{
+  auto world_lv = create_world();
+  auto world_pv = new G4PVPlacement(0, {}, world_lv, "world_physical", 0, false, 0, true);
+
+  auto pvt_lv = create_scintillator();
+  new G4PVPlacement(0, {}, pvt_lv, "scintillator_pv", world_lv, false, 0, true);
+
+  const G4double cube_lens_dist = 18.87 * mm;
+
+  auto lens_system_lv = create_lens_system_lv();
+
+  auto lenses_rotation = new G4RotationMatrix();
+  lenses_rotation->rotateX(180 * deg);
 
   new G4PVPlacement(
-      0,
-      G4ThreeVector(0, 0, -65. * mm),
-      power_meter_logical,
-      "power_meter_physical",
-      world_logical,
+      lenses_rotation,
+      {0, 0, (18.5 + cube_lens_dist) * mm},
+      lens_system_lv,
+      "lens_system_physical",
+      world_lv,
       false,
       0,
       true);
 
-  return world_physical;
+  create_and_place_cmos(world_lv, 75. * mm);
+
+  return world_pv;
 }
 
 void DetectorConstruction::ConstructSDandField()
 {
-  auto power_meter = new SensitiveDetector("power_meter");
-  G4SDManager::GetSDMpointer()->AddNewDetector(power_meter);
-  SetSensitiveDetector("power_meter_logical", power_meter);
+  auto cmos_sensor = new SensitiveDetector("cmos_sensor");
+  m_cmos_sensor_lv->SetSensitiveDetector(cmos_sensor);
 }
+
+} // namespace riptide
