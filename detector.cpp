@@ -3,13 +3,21 @@
 #include <G4AnalysisManager.hh>
 #include <G4SystemOfUnits.hh>
 
-SensitiveDetector::SensitiveDetector(std::string const& name)
-    : G4VSensitiveDetector{name}
-{}
+namespace riptide {
 
-bool SensitiveDetector::ProcessHits(G4Step*, G4TouchableHistory*)
+G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
 {
+  auto track = step->GetTrack();
+  track->SetTrackStatus(fStopAndKill);
+
+  const auto touchable = step->GetPreStepPoint()->GetTouchable();
+  auto physical_volume = touchable->GetVolume();
+  auto pos_sensor      = physical_volume->GetTranslation();
+
   auto analysis_manager = G4AnalysisManager::Instance();
-  analysis_manager->FillH1(0, 1.0, 1.0);
+  analysis_manager->FillH2(0, pos_sensor[0], pos_sensor[1]);
+
   return true;
 }
+
+} // namespace riptide

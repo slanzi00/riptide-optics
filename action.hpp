@@ -3,10 +3,14 @@
 
 #include <G4VUserActionInitialization.hh>
 
+namespace riptide {
+
 class ActionInitialization : public G4VUserActionInitialization
 {
  public:
   virtual void Build() const;
 };
+
+} // namespace riptide
 
 #endif
