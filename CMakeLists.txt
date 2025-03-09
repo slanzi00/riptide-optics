@@ -10,7 +10,6 @@ string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -Wconversion -Wsign-conv
 
 find_package(Geant4 REQUIRED ui_all vis_all)
 include(${Geant4_USE_FILE})
-include_directories(${PROJECT_SOURCE_DIR}/include)
 
 add_executable(simulate main.cpp construction.cpp physics.cpp generator.cpp action.cpp run.cpp detector.cpp)
 target_link_libraries(simulate ${Geant4_LIBRARIES})
