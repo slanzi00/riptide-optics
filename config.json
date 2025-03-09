@@ -1,0 +1,8 @@
+{
+  "geometry": {
+    "world_size": 1000,
+    "scintillator_side": 60.0,
+    "cube_lens_distance": 18.87,
+    "lens_sensor_distance": 75.0
+  }
+}
