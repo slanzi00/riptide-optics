@@ -17,7 +17,7 @@
 
 namespace riptide {
 
-G4LogicalVolume* DetectorConstruction::create_world(double size = 1. * m)
+G4LogicalVolume* DetectorConstruction::create_world()
 {
   auto void_material = G4NistManager::Instance()->FindOrBuildMaterial("G4_AIR");
 
@@ -25,11 +25,11 @@ G4LogicalVolume* DetectorConstruction::create_world(double size = 1. * m)
   void_properties->AddProperty("RINDEX", {1. * eV, 10. * eV}, {1.0, 1.0});
   void_material->SetMaterialPropertiesTable(void_properties);
 
-  auto world_solid = new G4Box("world_sv", size / 2., size / 2., size / 2.);
+  auto world_solid = new G4Box("world_sv", m_world_size / 2., m_world_size / 2., m_world_size / 2.);
   return new G4LogicalVolume(world_solid, void_material, "world_lv");
 }
 
-G4LogicalVolume* DetectorConstruction::create_scintillator(double side = 6. * cm)
+G4LogicalVolume* DetectorConstruction::create_scintillator()
 {
   auto pvt_material = G4NistManager::Instance()->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
 
@@ -45,7 +45,11 @@ G4LogicalVolume* DetectorConstruction::create_scintillator(double side = 6. * cm
 
   pvt_material->SetMaterialPropertiesTable(pvt_properties);
 
-  auto solid = new G4Box("scintillator_sv", side / 2., side / 2., side / 2.);
+  auto solid = new G4Box(
+      "scintillator_sv",
+      m_scintillator_side / 2.,
+      m_scintillator_side / 2.,
+      m_scintillator_side / 2.);
   return new G4LogicalVolume(solid, pvt_material, "scintillator_lv");
 }
 
@@ -105,8 +109,7 @@ G4LogicalVolume* DetectorConstruction::create_lens_system_lv()
   return lenses_logical;
 }
 
-void DetectorConstruction::create_and_place_cmos(
-    G4LogicalVolume* world_lv, double lens_sensor_dist = 35. * mm)
+void DetectorConstruction::create_and_place_cmos(G4LogicalVolume* world_lv)
 {
   auto silicon_material   = G4NistManager::Instance()->FindOrBuildMaterial("G4_Si");
   auto silicon_properties = new G4MaterialPropertiesTable();
@@ -133,7 +136,7 @@ void DetectorConstruction::create_and_place_cmos(
           G4ThreeVector(
               (-sensor_width / 2. + (i + 0.5) * pixel_size_x),
               (-sensor_height / 2. + (j + 0.5) * pixel_size_y),
-              (79.5 + lens_sensor_dist) * mm),
+              (79.5 + m_lens_sensor_dist) * mm),
           m_cmos_sensor_lv,
           "cmos_sensor_pv",
           world_lv,
@@ -144,6 +147,14 @@ void DetectorConstruction::create_and_place_cmos(
   }
 }
 
+DetectorConstruction::DetectorConstruction(
+    double world_size, double scintillator_side, double cube_lens_dist, double lens_sensor_dist)
+    : m_world_size(world_size)
+    , m_scintillator_side(scintillator_side)
+    , m_cube_lens_dist(cube_lens_dist)
+    , m_lens_sensor_dist(lens_sensor_dist)
+{}
+
 G4VPhysicalVolume* DetectorConstruction::Construct()
 {
   auto world_lv = create_world();
@@ -152,7 +163,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   auto pvt_lv = create_scintillator();
   new G4PVPlacement(0, {}, pvt_lv, "scintillator_pv", world_lv, false, 0, true);
 
-  const G4double cube_lens_dist = 18.87 * mm;
+  // const G4double cube_lens_dist = 18.87 * mm;
 
   auto lens_system_lv = create_lens_system_lv();
 
@@ -161,7 +172,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
   new G4PVPlacement(
       lenses_rotation,
-      {0, 0, (18.5 + cube_lens_dist) * mm},
+      {0, 0, (18.5 + m_cube_lens_dist) * mm},
       lens_system_lv,
       "lens_system_physical",
       world_lv,
@@ -169,7 +180,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       0,
       true);
 
-  create_and_place_cmos(world_lv, 75. * mm);
+  create_and_place_cmos(world_lv);
 
   return world_pv;
 }
