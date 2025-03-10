@@ -1,7 +1,8 @@
-# riptide-optics
+# Riptide Optics
 
 ## Overview
-Riptide Optics is a project focused on simulating optical systems using Geant4. This project aims to provide accurate and efficient simulations for various optical configurations.
+Riptide Optics is a project dedicated to simulating optical systems using the Geant4 toolkit. The goal is to deliver precise and efficient simulations for a variety of optical configurations, aiding in the design and analysis of optical systems.
+![Riptide Optics](images/riptide_optics.png){ width=50% }
 
 ## Requirements
 - Geant4
@@ -9,22 +10,17 @@ Riptide Optics is a project focused on simulating optical systems using Geant4. 
 - Ninja
 
 ## Installation
-1. Clone the repository:
-  ```sh
-  git clone https://github.com/yourusername/riptide-optics.git
-  cd riptide-optics
-  ```
-
-2. Create a build directory and compile the project using CMake:
-  ```sh
-  cmake -S . -B build -DGeant4_DIR=~/g4/lib/cmake/Geant4/ -G"Ninja Multi-Config"
-  cmake --build build --config Debug
-  ```
+Create a build directory and compile the project using CMake:
+```sh
+cmake -S . -B build -DGeant4_DIR=~/path/to/cmake/Geant4/ -G"Ninja Multi-Config"
+cmake --build build --config Release
+```
 
 ## Usage
 To run the simulation, execute the following command:
 ```sh
-./build/simulate
+build/simulate
 ```
 
-This simulation produces a 2D histogram `output.root` with a matrix that records the optical photons.
+The simulation generates a 2D histogram `output.root`, which contains a matrix recording the optical photons' interactions.
+
