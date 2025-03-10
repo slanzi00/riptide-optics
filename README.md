@@ -2,7 +2,7 @@
 
 ## Overview
 Riptide Optics is a project dedicated to simulating optical systems using the Geant4 toolkit. The goal is to deliver precise and efficient simulations for a variety of optical configurations, aiding in the design and analysis of optical systems.
-![Riptide Optics](images/riptide_optics.png){ width=50% }
+![Riptide Optics](images/test.png)
 
 ## Requirements
 - Geant4
