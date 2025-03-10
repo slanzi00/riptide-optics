@@ -50,6 +50,7 @@ G4LogicalVolume* DetectorConstruction::create_scintillator()
       m_scintillator_side / 2.,
       m_scintillator_side / 2.,
       m_scintillator_side / 2.);
+
   return new G4LogicalVolume(solid, pvt_material, "scintillator_lv");
 }
 
@@ -109,50 +110,85 @@ G4LogicalVolume* DetectorConstruction::create_lens_system_lv()
   return lenses_logical;
 }
 
-void DetectorConstruction::create_and_place_cmos(G4LogicalVolume* world_lv)
+void DetectorConstruction::create_and_place_cmos_y(G4LogicalVolume* world_lv)
 {
   auto silicon_material   = G4NistManager::Instance()->FindOrBuildMaterial("G4_Si");
   auto silicon_properties = new G4MaterialPropertiesTable();
   silicon_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {3.42, 3.42});
   silicon_material->SetMaterialPropertiesTable(silicon_properties);
 
-  const G4double sensor_width     = 19. * mm;
-  const G4double sensor_height    = 10. * mm;
-  const G4double sensor_thickness = 0.1 * mm;
-  const G4int num_pixels_x        = 38 * 2;
-  const G4int num_pixels_y        = 20 * 2;
-  const G4double pixel_size_x     = sensor_width / num_pixels_x;
-  const G4double pixel_size_y     = sensor_height / num_pixels_y;
+  auto const sensor_thickness = 0.1 * mm;
+  auto const pixel_size_x     = m_sensor_width / m_num_pixels_x;
+  auto const pixel_size_y     = m_sensor_height / m_num_pixels_y;
 
   auto cmos_sensor_sv =
-      new G4Box("cmos_sensor_sv", pixel_size_x / 2., pixel_size_y / 2., sensor_thickness / 2.);
+      new G4Box("cmos_sensor_y_sv", pixel_size_x / 2., sensor_thickness / 2., pixel_size_y / 2.);
 
-  m_cmos_sensor_lv = new G4LogicalVolume(cmos_sensor_sv, silicon_material, "cmos_sensor_lv");
+  m_cmos_sensor_y_lv = new G4LogicalVolume(cmos_sensor_sv, silicon_material, "cmos_sensor_y_lv");
 
-  for (int i = 0; i < num_pixels_x; i++) {
-    for (int j = 0; j < num_pixels_y; j++) {
+  for (int i{0}; i != m_num_pixels_x; ++i) {
+    for (int j{0}; j != m_num_pixels_y; ++j) {
       new G4PVPlacement(
           0,
           G4ThreeVector(
-              (-sensor_width / 2. + (i + 0.5) * pixel_size_x),
-              (-sensor_height / 2. + (j + 0.5) * pixel_size_y),
-              (79.5 + m_lens_sensor_dist) * mm),
-          m_cmos_sensor_lv,
-          "cmos_sensor_pv",
+              (-m_sensor_width / 2. + (i + 0.5) * pixel_size_x),
+              (79.5 + m_lens_sensor_dist) * mm,
+              (-m_sensor_height / 2. + (j + 0.5) * pixel_size_y)),
+          m_cmos_sensor_y_lv,
+          "cmos_sensor_y_pv",
           world_lv,
           false,
-          i * num_pixels_y + j,
+          i * m_num_pixels_y + j,
+          false);
+    }
+  }
+}
+
+void DetectorConstruction::create_and_place_cmos_z(G4LogicalVolume* world_lv)
+{
+  auto silicon_material   = G4NistManager::Instance()->FindOrBuildMaterial("G4_Si");
+  auto silicon_properties = new G4MaterialPropertiesTable();
+  silicon_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {3.42, 3.42});
+  silicon_material->SetMaterialPropertiesTable(silicon_properties);
+
+  auto const sensor_thickness = 0.1 * mm;
+  auto const pixel_size_x = m_sensor_width / m_num_pixels_x;
+  auto const pixel_size_y = m_sensor_height / m_num_pixels_y;
+
+  auto cmos_sensor_sv =
+      new G4Box("cmos_sensor_z_sv", pixel_size_x / 2., pixel_size_y / 2., sensor_thickness / 2.);
+
+  m_cmos_sensor_z_lv = new G4LogicalVolume(cmos_sensor_sv, silicon_material, "cmos_sensor_z_lv");
+
+  for (int i{0}; i != m_num_pixels_x; ++i) {
+    for (int j{0}; j != m_num_pixels_y; ++j) {
+      new G4PVPlacement(
+          0,
+          G4ThreeVector(
+              (-m_sensor_width / 2. + (i + 0.5) * pixel_size_x),
+              (-m_sensor_height / 2. + (j + 0.5) * pixel_size_y),
+              (79.5 + m_lens_sensor_dist) * mm),
+          m_cmos_sensor_z_lv,
+          "cmos_sensor_z_pv",
+          world_lv,
+          false,
+          i * m_num_pixels_y + j,
           false);
     }
   }
 }
 
 DetectorConstruction::DetectorConstruction(
-    double world_size, double scintillator_side, double cube_lens_dist, double lens_sensor_dist)
+    double world_size, double scintillator_side, double cube_lens_dist, double lens_sensor_dist,
+    double sensor_width, double sensor_height, int num_pixels_x, int num_pixels_y)
     : m_world_size(world_size)
     , m_scintillator_side(scintillator_side)
     , m_cube_lens_dist(cube_lens_dist)
     , m_lens_sensor_dist(lens_sensor_dist)
+    , m_sensor_width(sensor_width)
+    , m_sensor_height(sensor_height)
+    , m_num_pixels_x(num_pixels_x)
+    , m_num_pixels_y(num_pixels_y)
 {}
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
@@ -163,15 +199,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   auto pvt_lv = create_scintillator();
   new G4PVPlacement(0, {}, pvt_lv, "scintillator_pv", world_lv, false, 0, true);
 
-  // const G4double cube_lens_dist = 18.87 * mm;
-
   auto lens_system_lv = create_lens_system_lv();
 
-  auto lenses_rotation = new G4RotationMatrix();
-  lenses_rotation->rotateX(180 * deg);
+  auto lenses_z_rotation = new G4RotationMatrix();
+  lenses_z_rotation->rotateX(180 * deg);
 
   new G4PVPlacement(
-      lenses_rotation,
+      lenses_z_rotation,
       {0, 0, (18.5 + m_cube_lens_dist) * mm},
       lens_system_lv,
       "lens_system_physical",
@@ -180,15 +214,32 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       0,
       true);
 
-  create_and_place_cmos(world_lv);
+  auto lenses_y_rotation = new G4RotationMatrix();
+  lenses_y_rotation->rotateX(270 * deg);
+
+  new G4PVPlacement(
+      lenses_y_rotation,
+      {0, (18.5 + m_cube_lens_dist) * mm, 0},
+      lens_system_lv,
+      "lens_system_physical",
+      world_lv,
+      false,
+      0,
+      true);
+
+  create_and_place_cmos_y(world_lv);
+  create_and_place_cmos_z(world_lv);
 
   return world_pv;
 }
 
 void DetectorConstruction::ConstructSDandField()
 {
-  auto cmos_sensor = new SensitiveDetector("cmos_sensor");
-  m_cmos_sensor_lv->SetSensitiveDetector(cmos_sensor);
+  auto cmos_sensor_y = new SensitiveDetector(m_cmos_sensor_y_lv->GetName(), 0);
+  auto cmos_sensor_z = new SensitiveDetector(m_cmos_sensor_z_lv->GetName(), 1);
+
+  m_cmos_sensor_y_lv->SetSensitiveDetector(cmos_sensor_y);
+  m_cmos_sensor_z_lv->SetSensitiveDetector(cmos_sensor_z);
 }
 
 } // namespace riptide

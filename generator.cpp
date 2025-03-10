@@ -24,7 +24,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event)
 
   G4ThreeVector position{0.0, 0.0, 0.0};
   G4ThreeVector momentum_direction{1.0, 0.0, 0.0};
-  G4double proton_energy = 20.0 * MeV;
+  auto const proton_energy = 30.0 * MeV;
 
   m_particle_gun->SetParticlePosition(position);
   m_particle_gun->SetParticleMomentumDirection(momentum_direction);

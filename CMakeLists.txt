@@ -8,15 +8,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast")
 
-include(FetchContent)
-FetchContent_Declare(nlohmann_json
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  TAG v3.11.3
-)
-FetchContent_MakeAvailable(nlohmann_json)
-
 find_package(Geant4 REQUIRED ui_all vis_all)
 include(${Geant4_USE_FILE})
 
 add_executable(simulate main.cpp config.cpp construction.cpp physics.cpp generator.cpp action.cpp run.cpp detector.cpp)
-target_link_libraries(simulate ${Geant4_LIBRARIES} nlohmann_json::nlohmann_json)
+target_link_libraries(simulate ${Geant4_LIBRARIES})

@@ -5,6 +5,11 @@
 
 namespace riptide {
 
+SensitiveDetector::SensitiveDetector(std::string_view name, int detector_id)
+    : G4VSensitiveDetector{name.data()}
+    , m_detector_id{detector_id}
+{}
+
 G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
 {
   auto track = step->GetTrack();
@@ -15,7 +20,7 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
   auto pos_sensor      = physical_volume->GetTranslation();
 
   auto analysis_manager = G4AnalysisManager::Instance();
-  analysis_manager->FillH2(0, pos_sensor[0], pos_sensor[1]);
+  analysis_manager->FillH2(m_detector_id, pos_sensor.x(), m_detector_id == 0 ? pos_sensor.z() : pos_sensor.y());
 
   return true;
 }

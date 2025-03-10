@@ -7,8 +7,10 @@ namespace riptide {
 
 class SensitiveDetector : public G4VSensitiveDetector
 {
+  int m_detector_id;
+
  public:
-  using G4VSensitiveDetector::G4VSensitiveDetector;
+  SensitiveDetector(std::string_view, int);
   bool ProcessHits(G4Step*, G4TouchableHistory*) override;
 };
 

@@ -1,6 +1,7 @@
 #include "config.hpp"
 
-#include <nlohmann/json.hpp>
+#include "json.hpp"
+
 #include <fstream>
 
 namespace riptide {
@@ -22,6 +23,10 @@ Geometry load_geometry(std::string_view filename)
   geom.scintillator_side = j["geometry"]["scintillator_side"].get<double>();
   geom.cube_lens_dist    = j["geometry"]["cube_lens_distance"].get<double>();
   geom.lens_sensor_dist  = j["geometry"]["lens_sensor_distance"].get<double>();
+  geom.sensor_width      = j["geometry"]["sensor_width"].get<double>();
+  geom.sensor_height     = j["geometry"]["sensor_height"].get<double>();
+  geom.num_pixels_x      = j["geometry"]["num_pixels_x"].get<int>();
+  geom.num_pixels_y      = j["geometry"]["num_pixels_y"].get<int>();
 
   return geom;
 }
