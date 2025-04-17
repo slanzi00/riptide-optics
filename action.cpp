@@ -4,9 +4,13 @@
 
 namespace riptide {
 
+ActionInitialization::ActionInitialization(Geometry geom)
+    : m_geometry{std::move(geom)}
+{}
+
 void ActionInitialization::Build() const
 {
-  SetUserAction(new PrimaryGeneratorAction{});
+  SetUserAction(new PrimaryGeneratorAction{m_geometry});
   SetUserAction(new RunAction{});
 }
 

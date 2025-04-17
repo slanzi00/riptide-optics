@@ -2,6 +2,7 @@
 #include "detector.hpp"
 
 #include <G4Box.hh>
+#include <G4Ellipsoid.hh>
 #include <G4LogicalVolume.hh>
 #include <G4Material.hh>
 #include <G4MaterialPropertiesTable.hh>
@@ -25,7 +26,11 @@ G4LogicalVolume* DetectorConstruction::create_world()
   void_properties->AddProperty("RINDEX", {1. * eV, 10. * eV}, {1.0, 1.0});
   void_material->SetMaterialPropertiesTable(void_properties);
 
-  auto world_solid = new G4Box("world_sv", m_world_size / 2., m_world_size / 2., m_world_size / 2.);
+  auto world_solid = new G4Box(
+      "world_sv",
+      m_geometry.world_size / 2.,
+      m_geometry.world_size / 2.,
+      m_geometry.world_size / 2.);
   return new G4LogicalVolume(world_solid, void_material, "world_lv");
 }
 
@@ -37,7 +42,7 @@ G4LogicalVolume* DetectorConstruction::create_scintillator()
   pvt_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {1.58, 1.58});
   pvt_properties->AddProperty("ABSLENGTH", {1 * eV, 10 * eV}, {210 * cm, 210 * cm});
   pvt_properties->AddProperty("SCINTILLATIONCOMPONENT1", {1 * eV, 10 * eV}, {1.34e-4, 1.34e-4});
-  pvt_properties->AddConstProperty("SCINTILLATIONYIELD", 10000. / MeV);
+  pvt_properties->AddConstProperty("SCINTILLATIONYIELD", m_geometry.scintillation_yield / MeV);
   pvt_properties->AddConstProperty("RESOLUTIONSCALE", 1.0);
   pvt_properties->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 1 * ns);
   pvt_properties->AddConstProperty("SCINTILLATIONTIMECONSTANT2", 10 * ns);
@@ -47,63 +52,31 @@ G4LogicalVolume* DetectorConstruction::create_scintillator()
 
   auto solid = new G4Box(
       "scintillator_sv",
-      m_scintillator_side / 2.,
-      m_scintillator_side / 2.,
-      m_scintillator_side / 2.);
+      m_geometry.scintillator_side / 2.,
+      m_geometry.scintillator_side / 2.,
+      m_geometry.scintillator_side / 2.);
 
   return new G4LogicalVolume(solid, pvt_material, "scintillator_lv");
 }
 
 G4LogicalVolume* DetectorConstruction::create_lens_system_lv()
 {
-  auto pyrex_material = G4NistManager::Instance()->FindOrBuildMaterial("G4_Pyrex_Glass");
-
+  auto pyrex_material           = G4NistManager::Instance()->FindOrBuildMaterial("G4_Pyrex_Glass");
   auto pyrex_optical_properties = new G4MaterialPropertiesTable();
   pyrex_optical_properties->AddProperty("RINDEX", {1 * eV, 10 * eV}, {1.47, 1.47});
   pyrex_material->SetMaterialPropertiesTable(pyrex_optical_properties);
 
-  const G4double lens_1_radius        = 28.2 * mm;
-  const G4double lens_1_cutout_offset = 16.3 * mm;
+  auto const r75 = 38.6 * mm, h75 = 12.5 * mm; // by Thorlabs
+  auto lens75_solid = new G4Ellipsoid("lens75_solid", r75, r75, r75, r75 - h75, r75);
 
-  auto lens_1_sphere_solid =
-      new G4Sphere("lens_1_sphere_solid", 0., lens_1_radius, 0., 2 * M_PI, 0., M_PI);
+  auto const r60 = 30.9 * mm, h60 = 16.3 * mm; // by Thorlabs
+  auto lens60_solid = new G4Ellipsoid("lens60_solid", r60, r60, r60, r60 - h60, r60);
 
-  auto lens_1_cube_solid =
-      new G4Box("lens_1_cube_solid", lens_1_radius, lens_1_radius, lens_1_radius);
-
-  auto lens_1_solid = new G4SubtractionSolid(
-      "lens_1_solid",
-      lens_1_sphere_solid,
-      lens_1_cube_solid,
-      0,
-      G4ThreeVector(0, 0, lens_1_cutout_offset));
-
-  const G4double lens_2_radius           = 35.25 * mm;
-  const G4double lens_2_cutout_offset    = 12.5 * mm;
-  const G4double lens_2_placement_offset = -64 * mm;
-
-  auto lens_2_sphere_solid =
-      new G4Sphere("lens_2_sphere_solid", 0., lens_2_radius, 0., 2 * M_PI, 0., M_PI);
-
-  auto lens_2_cube_solid =
-      new G4Box("lens_2_cube_solid", lens_2_radius, lens_2_radius, lens_2_radius);
-
-  auto lens_2_solid = new G4SubtractionSolid(
-      "lens_2_solid",
-      lens_2_sphere_solid,
-      lens_2_cube_solid,
-      0,
-      G4ThreeVector(0, 0, lens_2_cutout_offset));
-
-  auto lens_2_rotation = new G4RotationMatrix();
-  lens_2_rotation->rotateX(180 * deg);
+  auto lens60_rotation = new G4RotationMatrix();
+  lens60_rotation->rotateX(180 * deg);
 
   auto lenses_solid = new G4UnionSolid(
-      "lenses_solid",
-      lens_1_solid,
-      lens_2_solid,
-      lens_2_rotation,
-      G4ThreeVector(0, 0, lens_2_placement_offset));
+      "lenses_solid", lens75_solid, lens60_solid, lens60_rotation, G4ThreeVector(0, 0, 69.5 * mm));
 
   auto lenses_logical = new G4LogicalVolume(lenses_solid, pyrex_material, "lenses_logical");
 
@@ -118,27 +91,29 @@ void DetectorConstruction::create_and_place_cmos_y(G4LogicalVolume* world_lv)
   silicon_material->SetMaterialPropertiesTable(silicon_properties);
 
   auto const sensor_thickness = 0.1 * mm;
-  auto const pixel_size_x     = m_sensor_width / m_num_pixels_x;
-  auto const pixel_size_y     = m_sensor_height / m_num_pixels_y;
+  auto const pixel_size_x     = m_geometry.sensor_width / m_geometry.num_pixels_x;
+  auto const pixel_size_y     = m_geometry.sensor_height / m_geometry.num_pixels_y;
 
   auto cmos_sensor_sv =
       new G4Box("cmos_sensor_y_sv", pixel_size_x / 2., sensor_thickness / 2., pixel_size_y / 2.);
 
   m_cmos_sensor_y_lv = new G4LogicalVolume(cmos_sensor_sv, silicon_material, "cmos_sensor_y_lv");
 
-  for (int i{0}; i != m_num_pixels_x; ++i) {
-    for (int j{0}; j != m_num_pixels_y; ++j) {
+  for (int i{0}; i != m_geometry.num_pixels_x; ++i) {
+    for (int j{0}; j != m_geometry.num_pixels_y; ++j) {
       new G4PVPlacement(
           0,
           G4ThreeVector(
-              (-m_sensor_width / 2. + (i + 0.5) * pixel_size_x),
-              (79.5 + m_lens_sensor_dist) * mm,
-              (-m_sensor_height / 2. + (j + 0.5) * pixel_size_y)),
+              (-m_geometry.sensor_width / 2. + (i + 0.5) * pixel_size_x),
+              (12.5 + 16.3 + m_geometry.scintillator_side / 2. + m_geometry.lens_sensor_dist
+               + m_geometry.cube_lens_dist)
+                  * mm,
+              (-m_geometry.sensor_height / 2. + (j + 0.5) * pixel_size_y)),
           m_cmos_sensor_y_lv,
           "cmos_sensor_y_pv",
           world_lv,
           false,
-          i * m_num_pixels_y + j,
+          i * m_geometry.num_pixels_y + j,
           false);
     }
   }
@@ -152,43 +127,36 @@ void DetectorConstruction::create_and_place_cmos_z(G4LogicalVolume* world_lv)
   silicon_material->SetMaterialPropertiesTable(silicon_properties);
 
   auto const sensor_thickness = 0.1 * mm;
-  auto const pixel_size_x = m_sensor_width / m_num_pixels_x;
-  auto const pixel_size_y = m_sensor_height / m_num_pixels_y;
+  auto const pixel_size_x     = m_geometry.sensor_width / m_geometry.num_pixels_x;
+  auto const pixel_size_y     = m_geometry.sensor_height / m_geometry.num_pixels_y;
 
   auto cmos_sensor_sv =
       new G4Box("cmos_sensor_z_sv", pixel_size_x / 2., pixel_size_y / 2., sensor_thickness / 2.);
 
   m_cmos_sensor_z_lv = new G4LogicalVolume(cmos_sensor_sv, silicon_material, "cmos_sensor_z_lv");
 
-  for (int i{0}; i != m_num_pixels_x; ++i) {
-    for (int j{0}; j != m_num_pixels_y; ++j) {
+  for (int i{0}; i != m_geometry.num_pixels_x; ++i) {
+    for (int j{0}; j != m_geometry.num_pixels_y; ++j) {
       new G4PVPlacement(
           0,
           G4ThreeVector(
-              (-m_sensor_width / 2. + (i + 0.5) * pixel_size_x),
-              (-m_sensor_height / 2. + (j + 0.5) * pixel_size_y),
-              (79.5 + m_lens_sensor_dist) * mm),
+              (-m_geometry.sensor_width / 2. + (i + 0.5) * pixel_size_x),
+              (-m_geometry.sensor_height / 2. + (j + 0.5) * pixel_size_y),
+              (12.5 + 16.3 + m_geometry.scintillator_side / 2. + m_geometry.lens_sensor_dist
+               + m_geometry.cube_lens_dist)
+                  * mm),
           m_cmos_sensor_z_lv,
           "cmos_sensor_z_pv",
           world_lv,
           false,
-          i * m_num_pixels_y + j,
+          i * m_geometry.num_pixels_y + j,
           false);
     }
   }
 }
 
-DetectorConstruction::DetectorConstruction(
-    double world_size, double scintillator_side, double cube_lens_dist, double lens_sensor_dist,
-    double sensor_width, double sensor_height, int num_pixels_x, int num_pixels_y)
-    : m_world_size(world_size)
-    , m_scintillator_side(scintillator_side)
-    , m_cube_lens_dist(cube_lens_dist)
-    , m_lens_sensor_dist(lens_sensor_dist)
-    , m_sensor_width(sensor_width)
-    , m_sensor_height(sensor_height)
-    , m_num_pixels_x(num_pixels_x)
-    , m_num_pixels_y(num_pixels_y)
+DetectorConstruction::DetectorConstruction(Geometry geom)
+    : m_geometry{std::move(geom)}
 {}
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
@@ -201,12 +169,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
   auto lens_system_lv = create_lens_system_lv();
 
-  auto lenses_z_rotation = new G4RotationMatrix();
-  lenses_z_rotation->rotateX(180 * deg);
-
   new G4PVPlacement(
-      lenses_z_rotation,
-      {0, 0, (18.5 + m_cube_lens_dist) * mm},
+      0,
+      {0, 0, (3.9 + m_geometry.cube_lens_dist) * mm},
       lens_system_lv,
       "lens_system_physical",
       world_lv,
@@ -215,11 +180,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       true);
 
   auto lenses_y_rotation = new G4RotationMatrix();
-  lenses_y_rotation->rotateX(270 * deg);
+  lenses_y_rotation->rotateX(90 * deg);
 
   new G4PVPlacement(
       lenses_y_rotation,
-      {0, (18.5 + m_cube_lens_dist) * mm, 0},
+      {0, (3.9 + m_geometry.cube_lens_dist) * mm, 0},
       lens_system_lv,
       "lens_system_physical",
       world_lv,

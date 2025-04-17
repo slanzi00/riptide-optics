@@ -2,11 +2,16 @@
   "geometry": {
     "world_size": 1000.0,
     "scintillator_side": 60.0,
-    "cube_lens_distance": 18.87,
-    "lens_sensor_distance": 88.0,
-    "sensor_width": 100.0,
-    "sensor_height": 100.0,
-    "num_pixels_x": 256,
-    "num_pixels_y": 256
+    "scintillation_yield": 10000.0,
+    "cube_lens_distance": 64.0,
+    "lens_sensor_distance": 45.0,
+    "sensor_width": 25,
+    "sensor_height": 25,
+    "num_pixels_x": 128,
+    "num_pixels_y": 128,
+    "projectile_type": "proton",
+    "projectile_energy": 30.0,
+    "projectile_initial_position": [0.0, 0.0, 0.0],
+    "projectile_initial_direction": [1.0, 0.0, 0.0]
   }
 }
