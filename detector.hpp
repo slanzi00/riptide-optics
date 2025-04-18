@@ -10,7 +10,7 @@ class SensitiveDetector : public G4VSensitiveDetector
   int m_detector_id;
 
  public:
-  SensitiveDetector(std::string_view, int);
+  explicit SensitiveDetector(std::string_view, int);
   bool ProcessHits(G4Step*, G4TouchableHistory*) override;
 };
 

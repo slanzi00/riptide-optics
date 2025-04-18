@@ -15,6 +15,7 @@
 #include <G4ThreeVector.hh>
 #include <G4UnionSolid.hh>
 #include <G4VPhysicalVolume.hh>
+#include <G4RunManager.hh>
 
 namespace riptide {
 
